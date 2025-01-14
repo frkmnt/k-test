@@ -1,6 +1,6 @@
 # Hi, this is André!  
 
-Thank you for the opportunity!
+Thank you for the opportunity! As a polkadot/substrate developer, I have been getting more into vanilla Rust, so I appreciate the chance to practice.
 
 I am using the latest version of `cargo` and the Rust stable toolchain.  
 
