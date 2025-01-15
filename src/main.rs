@@ -18,7 +18,7 @@ use csv::Trim;
         #[serde(rename = "amount")]
         amount: Option<f64>, // Option since some transaction types don't have values for "amount"
         #[serde(default)]
-        is_disputed: bool,
+        dispute_status: DisputeStatus,
     }
 
 
@@ -31,6 +31,19 @@ use csv::Trim;
     }
 
 
+    #[derive(Debug, serde::Deserialize, PartialEq)]
+    enum DisputeStatus {
+        NotDisputed,
+        UnderDispute,
+        Resolved,
+        ChargedBack
+    } 
+
+    impl Default for DisputeStatus {
+        fn default() -> Self {
+            DisputeStatus::NotDisputed
+        }
+    }
 
 
 
@@ -254,7 +267,7 @@ use csv::Trim;
 
         if let Some(te) = transaction_entry {
             
-            if te.is_disputed {
+            if te.dispute_status != DisputeStatus::NotDisputed {
                 return Err("Error! Transaction {} is already disputed! Ignoring.".into()); 
             }
             else if te.client_id != transaction.client_id {
@@ -265,7 +278,7 @@ use csv::Trim;
 
             if let Some(cd) = client_data {
                 let amount = te.amount.unwrap();
-                te.is_disputed = true;
+                te.dispute_status = DisputeStatus::UnderDispute;
                 cd.available -= amount;
                 cd.held += amount;
                 cd.total_locks = cd.total_locks.checked_add(1u16).unwrap_or(u16::MAX); // prevent overflow
@@ -300,7 +313,7 @@ use csv::Trim;
 
         if let Some(te) = transaction_entry {
             
-            if !te.is_disputed {
+            if te.dispute_status != DisputeStatus::UnderDispute {
                 return Err("Error! Transaction {} is not disputed! Ignoring.".into()); 
             }
             else if te.client_id != transaction.client_id {
@@ -311,10 +324,10 @@ use csv::Trim;
 
             if let Some(cd) = client_data {
                 let amount = te.amount.unwrap();
-                te.is_disputed = false;
                 cd.available += amount;
                 cd.held -= amount;
                 cd.total_locks = cd.total_locks.checked_sub(1u16).unwrap_or(0u16);
+                te.dispute_status = DisputeStatus::Resolved;
             }
 
             else {
@@ -345,7 +358,7 @@ use csv::Trim;
 
         if let Some(te) = transaction_entry {
             
-            if !te.is_disputed {
+            if te.dispute_status != DisputeStatus::UnderDispute{
                 return Err("Error! Transaction {} is not disputed! Ignoring.".into()); 
             }
             else if te.client_id != transaction.client_id {
@@ -358,6 +371,7 @@ use csv::Trim;
                 let amount = te.amount.unwrap();
                 cd.held -= amount;
                 cd.total -= amount;
+                te.dispute_status = DisputeStatus::ChargedBack;
             }
 
             else {
